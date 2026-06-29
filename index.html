@@ -110,14 +110,14 @@ button{cursor:pointer;border:0;}
 .orientation-track{width:100%;}
 .orientation-zones{display:flex;justify-content:space-between;gap:10px;font-size:9px;font-weight:900;color:#6872a1;margin-top:5px;}
 
-.top-orientation{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(760px,50vw);height:58px;padding:8px 0;background:transparent;border:0;border-radius:0;box-shadow:none;z-index:18;}
+.top-orientation{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(820px,54vw);height:70px;padding:8px 0;background:transparent;border:0;border-radius:0;box-shadow:none;z-index:18;}
 .top-orientation .small-label{display:none;}
 .top-orientation-zones{display:none;}
 .top-orientation .orientation-track::-webkit-slider-runnable-track{background:#d6ddef;}
 .top-orientation .orientation-track::-moz-range-track{background:#d6ddef;}
 
 .scene-layer .climate-card{display:none !important;}
-.metrics-strip{position:absolute;top:54px;right:330px;display:flex;gap:7px;z-index:19;pointer-events:none;}
+.metrics-strip{position:absolute;top:56px;right:410px;display:flex;gap:7px;z-index:19;pointer-events:none;}
 .metrics-strip .metric-box{width:116px;min-height:45px;border-radius:12px;padding:6px 8px 6px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.42);box-shadow:0 10px 20px rgba(18,26,70,.12);color:#fff;backdrop-filter:blur(5px);}
 .metrics-strip .metric-box h4{margin:0 0 2px;font-size:8px;text-transform:uppercase;letter-spacing:.07em;color:#fff;font-weight:900;}
 .metrics-strip .metric-box .metric-readout{font-size:13px;font-weight:900;line-height:1.05;margin-bottom:0;color:#fff;}
@@ -143,13 +143,13 @@ button{cursor:pointer;border:0;}
 .timeline-row{position:relative;border-top:1px solid rgba(42,49,125,.16);border-bottom:1px solid rgba(42,49,125,.16);background:rgba(255,255,255,.73);display:grid;grid-template-columns:84px 1fr;align-items:center;gap:14px;padding:8px 16px;z-index:19;}
 .timeline-label{font-size:11px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;}
 .timeline-wrap{position:relative;padding:0 8px;}
-.timeline-input,.preset-input,.orientation-track{width:100%;appearance:none;height:42px;background:transparent;}
-.timeline-input::-webkit-slider-runnable-track,.preset-input::-webkit-slider-runnable-track,.orientation-track::-webkit-slider-runnable-track{height:9px;border-radius:999px;background:#d6ddef;}
-.timeline-input::-moz-range-track,.preset-input::-moz-range-track,.orientation-track::-moz-range-track{height:9px;border-radius:999px;background:#d6ddef;}
-.timeline-input::-webkit-slider-thumb{appearance:none;width:66px;height:36px;margin-top:-14px;background:url('assets/Cursore-timeline.png') center/contain no-repeat;border:0;filter:drop-shadow(0 5px 8px rgba(42,49,125,.22));}
-.timeline-input::-moz-range-thumb{width:66px;height:36px;background:url('assets/Cursore-timeline.png') center/contain no-repeat;border:0;filter:drop-shadow(0 5px 8px rgba(42,49,125,.22));}
-.orientation-track::-webkit-slider-thumb,.preset-input::-webkit-slider-thumb{appearance:none;width:62px;height:62px;margin-top:-26px;background:url('assets/Cursore-costa-mare.png') center/contain no-repeat;border:0;filter:drop-shadow(0 6px 10px rgba(42,49,125,.22));}
-.orientation-track::-moz-range-thumb,.preset-input::-moz-range-thumb{width:62px;height:62px;background:url('assets/Cursore-costa-mare.png') center/contain no-repeat;border:0;filter:drop-shadow(0 6px 10px rgba(42,49,125,.22));}
+.timeline-input,.preset-input,.orientation-track{width:100%;appearance:none;height:54px;background:transparent;}
+.timeline-input::-webkit-slider-runnable-track,.preset-input::-webkit-slider-runnable-track,.orientation-track::-webkit-slider-runnable-track{height:12px;border-radius:999px;background:#d6ddef;}
+.timeline-input::-moz-range-track,.preset-input::-moz-range-track,.orientation-track::-moz-range-track{height:12px;border-radius:999px;background:#d6ddef;}
+.timeline-input::-webkit-slider-thumb{appearance:none;width:84px;height:46px;margin-top:-17px;background:url('assets/Cursore-timeline.png') center/contain no-repeat;border:0;filter:drop-shadow(0 7px 10px rgba(42,49,125,.28));}
+.timeline-input::-moz-range-thumb{width:84px;height:46px;background:url('assets/Cursore-timeline.png') center/contain no-repeat;border:0;filter:drop-shadow(0 7px 10px rgba(42,49,125,.28));}
+.orientation-track::-webkit-slider-thumb,.preset-input::-webkit-slider-thumb{appearance:none;width:82px;height:82px;margin-top:-35px;background:url('assets/Cursore-costa-mare.png') center/contain no-repeat;border:0;filter:drop-shadow(0 8px 12px rgba(42,49,125,.30));}
+.orientation-track::-moz-range-thumb,.preset-input::-moz-range-thumb{width:82px;height:82px;background:url('assets/Cursore-costa-mare.png') center/contain no-repeat;border:0;filter:drop-shadow(0 8px 12px rgba(42,49,125,.30));}
 .year-marks{display:grid;grid-template-columns:repeat(4,1fr);font-size:10px;color:#5b6496;font-weight:900;margin-top:-3px;}
 .year-marks span:nth-child(2){text-align:center}.year-marks span:nth-child(3){text-align:center}.year-marks span:nth-child(4){text-align:right}
 .year-display{display:none;}
@@ -363,7 +363,7 @@ button{cursor:pointer;border:0;}
 
 <script>
 const CONFIG = {
-  SHEET_ENDPOINT: 'https://script.google.com/macros/s/AKfycbyTj4HANHYgMZIKQFq8haw8-2LCERp5LqgjSVBgJLC3Mp3SmkodMw-tTemRReWvgVGPMw/exec',
+  SHEET_ENDPOINT: 'https://script.google.com/macros/s/AKfycbwFPJBSzm5QIj5DejqE60jxN2TZug8wlzRo1x6XAdb8OY50JGE_ue84z_7q6VR1cCMSXA/exec',
   AUTO_SYNC: true,
   FETCH_NOTES_ON_LOAD: true
 };
