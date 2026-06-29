@@ -908,9 +908,21 @@ function scheduleSync(){ if(!CONFIG.AUTO_SYNC || !CONFIG.SHEET_ENDPOINT) return;
 async function postJSON(payload){
   if(!CONFIG.SHEET_ENDPOINT) return false;
   const body = JSON.stringify(payload);
-  // Google Apps Script spesso blocca o redirige fetch cross-origin da GitHub Pages.
-  // Per questo inviamo sempre tramite form nascosto + iframe: è il metodo più stabile
-  // per scrivere su doPost() senza dipendere da CORS.
+
+  // Metodo 1: sendBeacon invia text/plain senza preflight CORS.
+  // Apps Script lo legge da e.postData.contents e parsePayload_() lo interpreta come JSON.
+  try{
+    if(navigator.sendBeacon){
+      const blob = new Blob([body], {type:'text/plain;charset=utf-8'});
+      const ok = navigator.sendBeacon(CONFIG.SHEET_ENDPOINT, blob);
+      if(ok) return true;
+    }
+  }catch(err){
+    console.warn('sendBeacon non riuscito, provo form fallback', err);
+  }
+
+  // Metodo 2: form nascosto + iframe con campo payload.
+  // Apps Script lo legge da e.parameter.payload.
   return postWithHiddenForm(body);
 }
 function postWithHiddenForm(body){
@@ -925,8 +937,7 @@ function postWithHiddenForm(body){
     form.action=CONFIG.SHEET_ENDPOINT;
     form.target=iframeName;
     form.style.display='none';
-    // Lasciare l'enctype di default (application/x-www-form-urlencoded)
-    // permette ad Apps Script di leggere e.parameter.payload.
+    form.acceptCharset='UTF-8';
     const input=document.createElement('input');
     input.type='hidden';
     input.name='payload';
@@ -935,9 +946,9 @@ function postWithHiddenForm(body){
     document.body.appendChild(iframe);
     document.body.appendChild(form);
     let done=false;
-    const finish=ok=>{ if(done) return; done=true; setTimeout(()=>{form.remove(); iframe.remove();},650); resolve(ok); };
+    const finish=ok=>{ if(done) return; done=true; setTimeout(()=>{form.remove(); iframe.remove();},900); resolve(ok); };
     iframe.addEventListener('load',()=>finish(true));
-    setTimeout(()=>finish(true),2600);
+    setTimeout(()=>finish(true),3200);
     form.submit();
   });
 }
