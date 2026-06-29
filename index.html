@@ -364,7 +364,7 @@ button{cursor:pointer;border:0;}
 <script>
 const CONFIG = {
   SHEET_ENDPOINT: 'https://script.google.com/macros/s/AKfycbwFPJBSzm5QIj5DejqE60jxN2TZug8wlzRo1x6XAdb8OY50JGE_ue84z_7q6VR1cCMSXA/exec',
-  AUTO_SYNC: true,
+  AUTO_SYNC: false,
   FETCH_NOTES_ON_LOAD: true
 };
 const qs = (s, r=document)=>r.querySelector(s);
@@ -908,18 +908,10 @@ function scheduleSync(){ if(!CONFIG.AUTO_SYNC || !CONFIG.SHEET_ENDPOINT) return;
 async function postJSON(payload){
   if(!CONFIG.SHEET_ENDPOINT) return false;
   const body = JSON.stringify(payload);
-  try{
-    await fetch(CONFIG.SHEET_ENDPOINT, {
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body
-    });
-    return true;
-  }catch(err){
-    console.warn('Sync foglio via fetch non riuscito, provo fallback form', err);
-    return postWithHiddenForm(body);
-  }
+  // Google Apps Script spesso blocca o redirige fetch cross-origin da GitHub Pages.
+  // Per questo inviamo sempre tramite form nascosto + iframe: è il metodo più stabile
+  // per scrivere su doPost() senza dipendere da CORS.
+  return postWithHiddenForm(body);
 }
 function postWithHiddenForm(body){
   return new Promise(resolve=>{
@@ -932,8 +924,9 @@ function postWithHiddenForm(body){
     form.method='POST';
     form.action=CONFIG.SHEET_ENDPOINT;
     form.target=iframeName;
-    form.enctype='text/plain';
     form.style.display='none';
+    // Lasciare l'enctype di default (application/x-www-form-urlencoded)
+    // permette ad Apps Script di leggere e.parameter.payload.
     const input=document.createElement('input');
     input.type='hidden';
     input.name='payload';
@@ -944,7 +937,7 @@ function postWithHiddenForm(body){
     let done=false;
     const finish=ok=>{ if(done) return; done=true; setTimeout(()=>{form.remove(); iframe.remove();},650); resolve(ok); };
     iframe.addEventListener('load',()=>finish(true));
-    setTimeout(()=>finish(true),2300);
+    setTimeout(()=>finish(true),2600);
     form.submit();
   });
 }
