@@ -117,7 +117,7 @@ button{cursor:pointer;border:0;}
 .top-orientation .orientation-track::-moz-range-track{background:#d6ddef;}
 
 .scene-layer .climate-card{display:none !important;}
-.metrics-strip{position:absolute;top:56px;right:410px;display:flex;gap:7px;z-index:19;pointer-events:none;}
+.metrics-strip{position:absolute;top:76px;right:310px;display:flex;gap:7px;z-index:19;pointer-events:none;}
 .metrics-strip .metric-box{width:116px;min-height:45px;border-radius:12px;padding:6px 8px 6px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.42);box-shadow:0 10px 20px rgba(18,26,70,.12);color:#fff;backdrop-filter:blur(5px);}
 .metrics-strip .metric-box h4{margin:0 0 2px;font-size:8px;text-transform:uppercase;letter-spacing:.07em;color:#fff;font-weight:900;}
 .metrics-strip .metric-box .metric-readout{font-size:13px;font-weight:900;line-height:1.05;margin-bottom:0;color:#fff;}
@@ -129,8 +129,8 @@ button{cursor:pointer;border:0;}
 .metrics-strip .metric-box.sea h4,.metrics-strip .metric-box.sea .metric-readout,.metrics-strip .metric-box.sea .metric-caption{color:#fff;}
 .metrics-strip .metric-box.acid{background:rgba(244,167,29,.78);color:#fff;}
 .metrics-strip .metric-box.acid h4,.metrics-strip .metric-box.acid .metric-readout,.metrics-strip .metric-box.acid .metric-caption{color:#fff;}
-@media (max-width: 1280px){.metrics-strip{right:300px;transform:scale(.88);transform-origin:top right;}}
-@media (max-width: 1100px){.metrics-strip{right:260px;top:60px;transform:scale(.76);}}
+@media (max-width: 1280px){.metrics-strip{right:200px;top:80px;transform:scale(.88);transform-origin:top right;}}
+@media (max-width: 1100px){.metrics-strip{right:160px;top:80px;transform:scale(.76);}}
 
 
 .placement-hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(244,167,29,.92);color:#fff;padding:9px 12px;border-radius:999px;font-size:11px;font-weight:900;box-shadow:0 14px 28px rgba(244,167,29,.26);opacity:0;pointer-events:none;z-index:16;transition:opacity .25s ease;}
@@ -363,7 +363,7 @@ button{cursor:pointer;border:0;}
 
 <script>
 const CONFIG = {
-  SHEET_ENDPOINT: 'https://script.google.com/macros/s/AKfycbwgT9uqwIUsb9FUKpzn0CZSqVEt7oqGQyJwkTBCT9C3OAvypnQELL9PgOSVwjKnUIdLlw/exec',
+  SHEET_ENDPOINT: 'https://script.google.com/macros/s/AKfycbzeg9fVaZTMbolEoPpNpu7BiiDG1MwwzEJkkr6x3UqCkUfledg_gFdO3ADfM6bsVZ0bog/exec',
   AUTO_SYNC: false,
   FETCH_NOTES_ON_LOAD: true
 };
@@ -907,49 +907,21 @@ let syncTimer;
 function scheduleSync(){ if(!CONFIG.AUTO_SYNC || !CONFIG.SHEET_ENDPOINT) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncStateToSheet, 800); }
 async function postJSON(payload){
   if(!CONFIG.SHEET_ENDPOINT) return false;
-  const body = JSON.stringify(payload);
+  const url = new URL(CONFIG.SHEET_ENDPOINT);
+  url.searchParams.set('payload', JSON.stringify(payload));
+  url.searchParams.set('_ts', Date.now().toString());
 
-  // Metodo 1: sendBeacon invia text/plain senza preflight CORS.
-  // Apps Script lo legge da e.postData.contents e parsePayload_() lo interpreta come JSON.
-  try{
-    if(navigator.sendBeacon){
-      const blob = new Blob([body], {type:'text/plain;charset=utf-8'});
-      const ok = navigator.sendBeacon(CONFIG.SHEET_ENDPOINT, blob);
-      if(ok) return true;
-    }
-  }catch(err){
-    console.warn('sendBeacon non riuscito, provo form fallback', err);
-  }
-
-  // Metodo 2: form nascosto + iframe con campo payload.
-  // Apps Script lo legge da e.parameter.payload.
-  return postWithHiddenForm(body);
-}
-function postWithHiddenForm(body){
+  // Metodo GET-beacon: evita CORS, redirect e iframe di Google Apps Script.
+  // Richiede che doGet(e) nello script legga e.parameter.payload.
   return new Promise(resolve=>{
-    if(!CONFIG.SHEET_ENDPOINT) return resolve(false);
-    const iframeName='incoremed_state_submit_'+Date.now();
-    const iframe=document.createElement('iframe');
-    iframe.name=iframeName;
-    iframe.style.display='none';
-    const form=document.createElement('form');
-    form.method='POST';
-    form.action=CONFIG.SHEET_ENDPOINT;
-    form.target=iframeName;
-    form.style.display='none';
-    form.acceptCharset='UTF-8';
-    const input=document.createElement('input');
-    input.type='hidden';
-    input.name='payload';
-    input.value=body;
-    form.appendChild(input);
-    document.body.appendChild(iframe);
-    document.body.appendChild(form);
+    const img = new Image();
     let done=false;
-    const finish=ok=>{ if(done) return; done=true; setTimeout(()=>{form.remove(); iframe.remove();},900); resolve(ok); };
-    iframe.addEventListener('load',()=>finish(true));
-    setTimeout(()=>finish(true),3200);
-    form.submit();
+    const finish=ok=>{ if(done) return; done=true; img.onload=null; img.onerror=null; resolve(ok); };
+    img.onload=()=>finish(true);
+    // Apps Script restituisce JSON, non immagine: onerror può essere comunque segno che la richiesta è partita.
+    img.onerror=()=>finish(true);
+    setTimeout(()=>finish(true),2600);
+    img.src = url.toString();
   });
 }
 function currentPayload(){
