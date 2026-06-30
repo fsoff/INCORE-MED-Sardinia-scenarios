@@ -373,7 +373,7 @@ button{cursor:pointer;border:0;}
 
 <script>
 const CONFIG = {
-  SHEET_ENDPOINT: 'https://script.google.com/macros/s/AKfycbzeg9fVaZTMbolEoPpNpu7BiiDG1MwwzEJkkr6x3UqCkUfledg_gFdO3ADfM6bsVZ0bog/exec',
+  SHEET_ENDPOINT: 'https://script.google.com/macros/s/AKfycby_Nsly6wGBPt_eV9vXqCvUmgQPAJqd-2i-T_C4CsWv9W0Js7sJfaJ72NWgER6HwfAXZQ/exec',
   AUTO_SYNC: false,
   FETCH_NOTES_ON_LOAD: true
 };
@@ -607,14 +607,10 @@ function setupDistance(note){
   return sum/keys.length;
 }
 function noteMatchesCurrentSetup(note){
-  if(!note.approved) return false;
-  const scores=calculateScores();
-  const scenario=chooseScenario(scores);
-  const sameScenario = !note.scenario || note.scenario === scenario;
-  const yearOk = Math.abs((Number(note.year)||2026)-year) <= (Number(note.toleranceYears)||3);
-  const angleOk = note.angle===undefined || Math.abs((((Number(note.angle)-angle+540)%360)-180)) <= 22;
-  const paramOk = setupDistance(note) <= (Number(note.toleranceParamMeanAbs)||12);
-  return sameScenario && yearOk && angleOk && paramOk;
+  // Le note sono persistenti: se arrivano dal backend del Google Sheet
+  // restano visibili a ogni accesso finché non vengono eliminate/non restituite dal foglio.
+  // Rimangono comunque ancorate alla posizione worldX/y del panorama, quindi scorrono con la scena.
+  return note && note.approved !== false;
 }
 function setSprite(role, opacity, blur=0, extraScale=1){
   qsa(`[data-role="${role}"]`).forEach((el,i)=>{
@@ -645,7 +641,7 @@ function renderNotes(){
     noteBody.textContent=n.text || '';
     const noteMeta=document.createElement('span');
     noteMeta.className='note-sticker-meta';
-    noteMeta.textContent=`${scenarios[n.scenario]?.title || n.scenario || 'Scenario'} · ${n.year || year} · distanza ${distance}`;
+    noteMeta.textContent=`${scenarios[n.scenario]?.title || n.scenario || 'Scenario'} · ${n.year || year}`;
     const close=document.createElement('span');
     close.className='note-sticker-close';
     close.textContent='×';
@@ -808,7 +804,7 @@ qs('#legendBtn').addEventListener('click',()=>showModal('Legenda del tool', `
     <li><strong>Ghiera circolare e barra superiore:</strong> ruotano l'orientamento della scena e della mappa.</li>
     <li><strong>Scala delle leve:</strong> ogni leva è verticale e usa una scala 1–100, dove 1 è minimo e 100 massimo.</li>
     <li><strong>Toni scuri, blur e overlay:</strong> indicano maggiore drammaticità, incertezza e pressione climatica.</li>
-    <li><strong>Note:</strong> scrivi una nota, clicca “Aggiungi nota” e poi clicca un punto del panorama. Le note si aprono in overlay arancione e sono ancorate allo scenario/set-up con cui sono state create.</li>
+    <li><strong>Note:</strong> scrivi una nota, clicca “Aggiungi nota” e poi clicca un punto del panorama. Le note si aprono come sticker arancioni, vengono ricaricate dal Google Sheet e restano ancorate al punto del panorama.</li>
   </ul>
 `));
 qs('#tutorialBtn').addEventListener('click', openTutorial);
@@ -826,7 +822,7 @@ qs('#sendSheetBtn').addEventListener('click', async()=>{
     setTimeout(()=>btn.textContent=old,1600);
   }
 });
-qs('#notesHelpBtn').addEventListener('click', ()=>showModal('Uso delle note', '<p>Le note sono moderate tramite Google Sheet. Dopo aver scritto il testo, premi <strong>Aggiungi nota</strong> e clicca un punto del panorama. La nota viene salvata con anno, scenario, valori delle leve e posizione: ricompare solo quando l’utente torna vicino a quello stesso set-up. Clicca la sfera per aprire lo sticker, e la sfera in alto a destra dello sticker per richiuderlo.</p>'));
+qs('#notesHelpBtn').addEventListener('click', ()=>showModal('Uso delle note', '<p>Le note vengono salvate e ricaricate dal Google Sheet a ogni accesso. Dopo aver scritto il testo, premi <strong>Aggiungi nota</strong> e clicca un punto del panorama. La nota resta ancorata a quel punto del panorama e scorre con la scena. Per rimuoverla definitivamente, elimina/non restituire la riga dal backend del foglio Google. Clicca la sfera per aprire lo sticker, e la sfera in alto a destra dello sticker per richiuderlo.</p>'));
 qs('#modalClose').addEventListener('click',()=>qs('#modal').classList.remove('active'));
 function showModal(title,html){qs('#modalTitle').textContent=title; qs('#modalText').innerHTML=html; qs('#modal').classList.add('active');}
 function openTutorial(){
@@ -968,9 +964,21 @@ async function fetchApprovedNotes(){
   if(!CONFIG.SHEET_ENDPOINT || !CONFIG.FETCH_NOTES_ON_LOAD) return;
   try{
     const url = new URL(CONFIG.SHEET_ENDPOINT);
-    url.searchParams.set('action','notes');
-    const res = await fetch(url.toString());
-    const data = await res.json();
+    url.searchParams.set('action','notes_all');
+    url.searchParams.set('_ts', Date.now().toString());
+    let res = await fetch(url.toString());
+    let data = await res.json();
+
+    // Fallback: se il backend non ha ancora action=notes_all,
+    // usa action=notes. In quel caso compariranno solo le note restituite dal backend.
+    if(!Array.isArray(data.notes)){
+      const fallbackUrl = new URL(CONFIG.SHEET_ENDPOINT);
+      fallbackUrl.searchParams.set('action','notes');
+      fallbackUrl.searchParams.set('_ts', Date.now().toString());
+      res = await fetch(fallbackUrl.toString());
+      data = await res.json();
+    }
+
     if(Array.isArray(data.notes)){
       notes = data.notes.map(n=>({
         note_id:n.note_id||n.id||'',
