@@ -135,22 +135,32 @@ button{cursor:pointer;border:0;}
 
 .placement-hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(244,167,29,.92);color:#fff;padding:9px 12px;border-radius:999px;font-size:11px;font-weight:900;box-shadow:0 14px 28px rgba(244,167,29,.26);opacity:0;pointer-events:none;z-index:16;transition:opacity .25s ease;}
 .placing .placement-hint{opacity:1;}
-.hotspot{position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(244,167,29,.82);border:2px solid rgba(255,255,255,.95);box-shadow:0 0 0 8px rgba(244,167,29,.16),0 14px 26px rgba(42,49,125,.28);transform:translate(-50%,-50%);display:grid;place-items:center;pointer-events:auto;z-index:16;}
+.hotspot{position:absolute;width:30px;height:30px;border-radius:50%;background:rgba(244,167,29,.86);border:2px solid rgba(255,255,255,.96);box-shadow:0 0 0 8px rgba(244,167,29,.17),0 0 22px rgba(244,167,29,.55),0 14px 26px rgba(42,49,125,.28);transform:translate(-50%,-50%);display:grid;place-items:center;pointer-events:auto;z-index:16;color:#fff;text-align:left;transition:width .22s ease,height .22s ease,border-radius .22s ease,transform .22s ease,box-shadow .22s ease,background .22s ease;}
 .hotspot.out-of-setup{display:none;}
-.hotspot::before{content:"";width:8px;height:8px;border-radius:50%;background:#fff;}
-.hotspot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid rgba(244,167,29,.32);animation:pulse 2.2s infinite;}
-@keyframes pulse{0%{transform:scale(.82);opacity:.92}70%{transform:scale(1.28);opacity:0}100%{opacity:0}}
+.hotspot::before{content:"";width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.9);}
+.hotspot::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(244,167,29,.38);animation:pulse 1.85s infinite;}
+.hotspot:hover{box-shadow:0 0 0 10px rgba(244,167,29,.20),0 0 28px rgba(244,167,29,.68),0 16px 30px rgba(42,49,125,.32);}
+.hotspot .note-sticker-body,.hotspot .note-sticker-meta,.hotspot .note-sticker-close{display:none;}
+.hotspot.is-open{width:clamp(188px,22vw,282px);height:auto;min-height:96px;border-radius:18px;background:rgba(244,167,29,.94);border:2px solid rgba(255,255,255,.96);padding:14px 40px 14px 15px;display:block;transform:translate(-18px,-18px);box-shadow:0 18px 42px rgba(42,49,125,.26),0 4px 0 rgba(255,255,255,.32) inset;z-index:80;}
+.hotspot.is-open::before,.hotspot.is-open::after{display:none;}
+.hotspot.is-open .note-sticker-body{display:block;font-size:13px;line-height:1.35;font-weight:800;color:#fff;white-space:normal;overflow-wrap:anywhere;text-align:left;}
+.hotspot.is-open .note-sticker-meta{display:block;margin-top:10px;font-size:10px;line-height:1.25;font-weight:900;letter-spacing:.03em;color:rgba(255,255,255,.82);text-transform:uppercase;text-align:left;}
+.hotspot.is-open .note-sticker-close{display:grid;place-items:center;position:absolute;right:8px;top:8px;width:25px;height:25px;border-radius:50%;border:2px solid rgba(255,255,255,.96);background:rgba(244,167,29,.95);color:#fff;font-size:15px;font-weight:900;line-height:1;box-shadow:0 0 0 5px rgba(244,167,29,.18),0 8px 18px rgba(42,49,125,.24);}
+.hotspot.is-open .note-sticker-close:hover{background:#fff;color:var(--area);}
+@keyframes pulse{0%{transform:scale(.78);opacity:.95}66%{transform:scale(1.45);opacity:0}100%{opacity:0}}
 .timeline-row{position:relative;border-top:1px solid rgba(42,49,125,.16);border-bottom:1px solid rgba(42,49,125,.16);background:rgba(255,255,255,.73);display:grid;grid-template-columns:84px 1fr;align-items:center;gap:14px;padding:8px 16px;z-index:19;}
 .timeline-label{font-size:11px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;}
-.timeline-wrap{position:relative;padding:0 8px;}
+.timeline-wrap{position:relative;padding:0 8px;display:flex;flex-direction:column;gap:2px;}
 .timeline-input,.preset-input,.orientation-track{width:100%;appearance:none;height:54px;background:transparent;}
+.timeline-wrap .timeline-input{order:2;}
+.timeline-wrap .year-marks{order:1;}
 .timeline-input::-webkit-slider-runnable-track,.preset-input::-webkit-slider-runnable-track,.orientation-track::-webkit-slider-runnable-track{height:12px;border-radius:999px;background:#d6ddef;}
 .timeline-input::-moz-range-track,.preset-input::-moz-range-track,.orientation-track::-moz-range-track{height:12px;border-radius:999px;background:#d6ddef;}
 .timeline-input::-webkit-slider-thumb{appearance:none;width:84px;height:46px;margin-top:-17px;background:url('assets/Cursore-timeline.png') center/contain no-repeat;border:0;filter:drop-shadow(0 7px 10px rgba(42,49,125,.28));}
 .timeline-input::-moz-range-thumb{width:84px;height:46px;background:url('assets/Cursore-timeline.png') center/contain no-repeat;border:0;filter:drop-shadow(0 7px 10px rgba(42,49,125,.28));}
 .orientation-track::-webkit-slider-thumb,.preset-input::-webkit-slider-thumb{appearance:none;width:82px;height:82px;margin-top:-35px;background:url('assets/Cursore-costa-mare.png') center/contain no-repeat;border:0;filter:drop-shadow(0 8px 12px rgba(42,49,125,.30));}
 .orientation-track::-moz-range-thumb,.preset-input::-moz-range-thumb{width:82px;height:82px;background:url('assets/Cursore-costa-mare.png') center/contain no-repeat;border:0;filter:drop-shadow(0 8px 12px rgba(42,49,125,.30));}
-.year-marks{display:grid;grid-template-columns:repeat(4,1fr);font-size:10px;color:#5b6496;font-weight:900;margin-top:-3px;}
+.year-marks{display:grid;grid-template-columns:repeat(4,1fr);font-size:10px;color:#5b6496;font-weight:900;margin:0 0 -5px;line-height:1.08;}
 .year-marks span:nth-child(2){text-align:center}.year-marks span:nth-child(3){text-align:center}.year-marks span:nth-child(4){text-align:right}
 .year-display{display:none;}
 .control-panel{background:rgba(255,255,255,.94);display:grid;grid-template-columns:330px minmax(690px,1fr) 250px;gap:16px;padding:14px 16px 16px;position:relative;z-index:20;align-items:start;}
@@ -625,11 +635,35 @@ function renderNotes(){
     if(!noteMatchesCurrentSetup(n)) return;
     const b=document.createElement('button');
     b.className='hotspot';
+    b.type='button';
     b.style.left=`${n.worldX}%`;
     b.style.top=`${n.y}%`;
     b.title='Apri nota';
     const distance = Math.round(setupDistance(n)*10)/10;
-    b.addEventListener('click',(ev)=>{ev.stopPropagation(); showModal('Osservazione', `<p>${escapeHtml(n.text)}</p><p><strong>Scenario:</strong> ${escapeHtml(scenarios[n.scenario]?.title || n.scenario || 'n.d.')}</p><p><strong>Anno:</strong> ${n.year} · <strong>distanza parametri:</strong> ${distance}</p>`);});
+    const noteBody=document.createElement('span');
+    noteBody.className='note-sticker-body';
+    noteBody.textContent=n.text || '';
+    const noteMeta=document.createElement('span');
+    noteMeta.className='note-sticker-meta';
+    noteMeta.textContent=`${scenarios[n.scenario]?.title || n.scenario || 'Scenario'} · ${n.year || year} · distanza ${distance}`;
+    const close=document.createElement('span');
+    close.className='note-sticker-close';
+    close.textContent='×';
+    close.setAttribute('aria-label','Chiudi nota');
+    b.appendChild(noteBody);
+    b.appendChild(noteMeta);
+    b.appendChild(close);
+    b.addEventListener('click',(ev)=>{
+      ev.stopPropagation();
+      if(b.classList.contains('is-open')){
+        b.classList.remove('is-open');
+        b.title='Apri nota';
+      }else{
+        qsa('.hotspot.is-open', layer).forEach(el=>el.classList.remove('is-open'));
+        b.classList.add('is-open');
+        b.title='Chiudi nota';
+      }
+    });
     layer.appendChild(b);
   });
 }
@@ -792,7 +826,7 @@ qs('#sendSheetBtn').addEventListener('click', async()=>{
     setTimeout(()=>btn.textContent=old,1600);
   }
 });
-qs('#notesHelpBtn').addEventListener('click', ()=>showModal('Uso delle note', '<p>Le note sono moderate tramite Google Sheet. Dopo aver scritto il testo, premi <strong>Aggiungi nota</strong> e clicca un punto del panorama. La nota viene salvata con anno, scenario, valori delle leve e posizione: ricompare solo quando l’utente torna vicino a quello stesso set-up.</p>'));
+qs('#notesHelpBtn').addEventListener('click', ()=>showModal('Uso delle note', '<p>Le note sono moderate tramite Google Sheet. Dopo aver scritto il testo, premi <strong>Aggiungi nota</strong> e clicca un punto del panorama. La nota viene salvata con anno, scenario, valori delle leve e posizione: ricompare solo quando l’utente torna vicino a quello stesso set-up. Clicca la sfera per aprire lo sticker, e la sfera in alto a destra dello sticker per richiuderlo.</p>'));
 qs('#modalClose').addEventListener('click',()=>qs('#modal').classList.remove('active'));
 function showModal(title,html){qs('#modalTitle').textContent=title; qs('#modalText').innerHTML=html; qs('#modal').classList.add('active');}
 function openTutorial(){
