@@ -558,9 +558,9 @@ body{overflow:auto;}
           <div class="title-row">
             <div class="scenario-title" id="scenarioTitle">Scenario intermedio</div>
             <div class="scenario-jump" aria-label="Preset scenari principali">
-              <button class="s1" data-scenario-preset="S1">S1 Blue paradise</button>
-              <button class="s2" data-scenario-preset="S2">S2 Protected waters</button>
-              <button class="s3" data-scenario-preset="S3">S3 Fragmented sea</button>
+              <button class="s1" data-scenario-preset="S1">S1 Futuro blu</button>
+              <button class="s2" data-scenario-preset="S2">S2 Acque protette</button>
+              <button class="s3" data-scenario-preset="S3">S3 Mare frammentato</button>
             </div>
           </div>
           <div class="scenario-subtitle" id="scenarioSubtitle">Traiettoria non ancora stabilizzata</div>
@@ -780,10 +780,10 @@ let year = 2026, tYear = 0, angle = 0, placing = false, audioOn = false;
 let notes = [];
 
 const scenarios = {
-  S1:{title:'Blue paradise under pressure', subtitle:'Crescita blu adattiva in equilibrio fragile', narrative:'La traiettoria sostiene attività economiche blu, pesca, acquacoltura e turismo, ma mantiene una soglia ecologica minima. Il sistema resta produttivo solo se le pressioni sono gestite e la governance rimane attiva.', color:'#f4a71d'},
-  S2:{title:'Protected waters and shared stewardship', subtitle:'Protezione, co-gestione e resilienza locale', narrative:'La traiettoria privilegia rifugi climatici, recupero della Posidonia, nursery e co-gestione. Le attività economiche restano presenti, ma vengono riorientate verso pratiche compatibili con la resilienza ecologica e sociale.', color:'#43af66'},
-  S3:{title:'Fragmented sea', subtitle:'Degrado ecologico e perdita di capacità adattiva', narrative:'Il sistema si avvicina a una traiettoria di frammentazione: habitat stressati, stock più fragili, maggiori pressioni nautiche e capacità adattiva insufficiente. La visualizzazione si scurisce per indicare drammaticità e incertezza.', color:'#da1f26'},
-  INT:{title:'Scenario intermedio', subtitle:'Traiettoria non ancora stabilizzata', narrative:'La configurazione mostra una trasformazione parziale. Alcuni parametri sono coerenti con uno scenario normativo, ma mancano ancora soglie minime robuste. Rafforza habitat, governance o riduzione delle pressioni per consolidare una traiettoria.', color:'#769bad'}
+  S1:{title:'Futuro blu e crescita innovativa', subtitle:'Crescita blu adattiva, innovazione e gestione dei trade-off', narrative:'La crescita dell’economia blu resta la priorità, ma viene resa più adattiva. Posidonia e rifugi climatici sono mantenuti come infrastrutture ecologiche; pesca, acquacoltura, turismo e trasporto marittimo evolvono attraverso innovazione, monitoraggio e gestione spaziale. La resilienza aumenta, ma restano trade-off tra crescita, spazio marino e conservazione.', color:'#f4a71d'},
+  S2:{title:'Acque protette e gestione condivisa', subtitle:'Integrità ecosistemica, ripristino e co-gestione', narrative:'La protezione e il ripristino degli ecosistemi definiscono i limiti entro cui operano le attività economiche. Posidonia e rifugi climatici vengono connessi e rafforzati; pesca, acquacoltura, turismo e navigazione sono riorganizzati con misure rigorose, adattative e partecipative. La resilienza socio-ecologica di lungo periodo prevale sulla massimizzazione della crescita settoriale.', color:'#43af66'},
+  S3:{title:'Mare frammentato sotto pressione', subtitle:'Governance reattiva, degrado e vulnerabilità crescente', narrative:'La governance resta frammentata e prevalentemente reattiva. Posidonia e habitat di nursery si degradano, la pesca mantiene pressioni elevate, l’acquacoltura diventa instabile, mentre turismo e traffico marittimo aggravano gli impatti cumulativi. Con l’aumento delle pressioni climatiche, ecosistemi ed economie costiere perdono progressivamente capacità adattativa.', color:'#da1f26'},
+  INT:{title:'Scenario intermedio', subtitle:'Traiettoria non ancora stabilizzata', narrative:'La configurazione combina elementi appartenenti a traiettorie diverse. Osserva quali leve stanno rafforzando resilienza, crescita o pressione e modifica il set-up per avvicinarlo in modo più coerente a uno dei tre scenari principali.', color:'#769bad'}
 };
 
 const slidersEl = qs('#sliders');
@@ -957,23 +957,57 @@ function setAudioMix(activeScenario, scores){
   audioTracks.wind.volume = clamp(danger*.28 + state.climate/100*.16,0,0.46);
 }
 
+const scenarioTargets = {
+  // S1: crescita blu sostenuta da innovazione e gestione adattativa; usi economici e traffico restano elevati.
+  S1:{posidonia:70,refugia:78,fishing:55,adaptiveFishing:88,aquaculture:90,ecotourism:80,traffic:85,governance:82,climate:78},
+  // S2: priorità all'integrità ecosistemica; attività economiche presenti entro soglie ecologiche più rigorose.
+  S2:{posidonia:95,refugia:95,fishing:25,adaptiveFishing:92,aquaculture:55,ecotourism:92,traffic:38,governance:95,climate:78},
+  // S3: pressioni elevate, adattamento debole e governance frammentata.
+  S3:{posidonia:18,refugia:15,fishing:85,adaptiveFishing:15,aquaculture:25,ecotourism:20,traffic:90,governance:15,climate:85}
+};
+
+const scoreWeights = {
+  posidonia:1.25,
+  refugia:1.15,
+  fishing:1.00,
+  adaptiveFishing:1.00,
+  aquaculture:.90,
+  ecotourism:.80,
+  traffic:1.00,
+  governance:1.25,
+  climate:.70
+};
+
+function similarityToTarget(target){
+  let weightedDistance=0, weightSum=0;
+  Object.keys(scoreWeights).forEach(k=>{
+    const w=scoreWeights[k];
+    weightedDistance += Math.abs(state[k]-target[k]) * w;
+    weightSum += w;
+  });
+  return clamp(Math.round(100 - weightedDistance/weightSum));
+}
+
 function calculateScores(){
-  const pressureLow = (100-state.fishing + 100-state.traffic)/2;
-  let S2 = (state.posidonia*1.35 + state.refugia*1.4 + state.governance*1.25 + state.ecotourism*.85 + pressureLow*.9 + (100-state.climate)*.55)/6.3;
-  let S1 = (state.aquaculture*1.05 + state.adaptiveFishing + state.ecotourism*.8 + state.governance*.9 + state.posidonia*.8 + (100-Math.abs(state.traffic-45))*.55 + (100-Math.abs(state.fishing-48))*.55)/5.65;
-  if(state.posidonia<38 || state.governance<32) S1 -= 12;
-  let S3 = (state.climate*1.25 + state.traffic*1.1 + state.fishing*.9 + (100-state.posidonia)*1.25 + (100-state.refugia) + (100-state.governance)*1.1)/6.6;
-  const timeStress = tYear*.18*state.climate;
-  S3 += timeStress/10;
-  return {S1:clamp(Math.round(S1)), S2:clamp(Math.round(S2)), S3:clamp(Math.round(S3))};
+  return {
+    S1: similarityToTarget(scenarioTargets.S1),
+    S2: similarityToTarget(scenarioTargets.S2),
+    S3: similarityToTarget(scenarioTargets.S3)
+  };
 }
 function chooseScenario(scores){
   const arr = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
-  if(arr[0][1] < 68) return 'INT';
-  if(arr[0][0]==='S2' && (state.posidonia<60 || state.refugia<58 || state.governance<58)) return 'INT';
-  if(arr[0][0]==='S1' && (state.posidonia<42 || state.governance<40)) return 'INT';
-  if(arr[0][0]==='S3' && arr[0][1] < 72) return 'INT';
-  return arr[0][0];
+  const [bestId,bestScore]=arr[0];
+  const secondScore=arr[1][1];
+
+  // Evita di assegnare uno scenario quando il set-up è ancora ibrido o troppo distante dal profilo di riferimento.
+  if(bestScore < 72 || (bestScore-secondScore) < 6) return 'INT';
+
+  // Soglie minime coerenti con la logica qualitativa dei tre scenari.
+  if(bestId==='S1' && (state.posidonia<55 || state.refugia<55 || state.adaptiveFishing<60 || state.governance<60)) return 'INT';
+  if(bestId==='S2' && (state.posidonia<75 || state.refugia<75 || state.governance<75 || state.fishing>45)) return 'INT';
+  if(bestId==='S3' && (state.posidonia>40 || state.governance>40 || state.refugia>45)) return 'INT';
+  return bestId;
 }
 function getPanShiftPx(){
   const m = syncWorldLayerSize();
@@ -1163,9 +1197,9 @@ qs('#resetBtn').addEventListener('click',()=>{
 });
 
 const scenarioPresets = {
-  S1:{posidonia:62,refugia:50,fishing:48,adaptiveFishing:76,aquaculture:78,ecotourism:62,traffic:42,governance:68,climate:42},
-  S2:{posidonia:90,refugia:86,fishing:28,adaptiveFishing:64,aquaculture:56,ecotourism:78,traffic:24,governance:90,climate:35},
-  S3:{posidonia:22,refugia:18,fishing:82,adaptiveFishing:18,aquaculture:28,ecotourism:14,traffic:86,governance:20,climate:82}
+  S1:{...scenarioTargets.S1},
+  S2:{...scenarioTargets.S2},
+  S3:{...scenarioTargets.S3}
 };
 function applyScenarioPreset(id){
   const preset=scenarioPresets[id];
