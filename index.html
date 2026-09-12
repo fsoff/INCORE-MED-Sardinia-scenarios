@@ -777,6 +777,9 @@ const parameterDefs = [
 ];
 const state = Object.fromEntries(parameterDefs.map(d=>[d.id,d.value]));
 let year = 2026, tYear = 0, angle = 0, placing = false, audioOn = false;
+// Scenario scelto esplicitamente con i preset S1/S2/S3.
+// Rimane il contesto delle note anche se l'utente modifica leggermente le leve.
+let activeScenarioContext = null;
 let notes = [];
 
 const scenarios = {
@@ -1068,12 +1071,55 @@ function setupDistance(note){
   const sum=keys.reduce((acc,k)=>acc+Math.abs((Number(note.params[k])||0)-state[k]),0);
   return sum/keys.length;
 }
+function parseMaybeJSON(value, fallback={}){
+  if(value && typeof value === 'object') return value;
+  if(typeof value === 'string' && value.trim()){
+    try{ const parsed=JSON.parse(value); return parsed && typeof parsed==='object' ? parsed : fallback; }
+    catch(e){}
+  }
+  return fallback;
+}
+
+function inferScenarioFromParams(params){
+  const obj=parseMaybeJSON(params,{});
+  const keys=Object.keys(scenarioTargets.S1).filter(k=>Number.isFinite(Number(obj[k])));
+  if(keys.length < 4) return null;
+  let best=null, bestDistance=Infinity;
+  ['S1','S2','S3'].forEach(id=>{
+    const dist=keys.reduce((sum,k)=>sum+Math.abs(Number(obj[k])-scenarioTargets[id][k]),0)/keys.length;
+    if(dist < bestDistance){ bestDistance=dist; best=id; }
+  });
+  return best;
+}
+
+function normalizeScenarioId(raw, title='', params=null, scores=null){
+  const direct=String(raw ?? '').trim().toUpperCase();
+  if(['S1','S2','S3','INT'].includes(direct)) return direct;
+
+  const label=`${raw ?? ''} ${title ?? ''}`.toLowerCase();
+  if(/blue paradise|futuro blu|blue growth|crescita innovativa|priorità blue growth|priorita blue growth/.test(label)) return 'S1';
+  if(/protected waters|acque protette|shared stewardship|gestione condivisa|priorità natura|priorita natura/.test(label)) return 'S2';
+  if(/fragmented sea|mare frammentato|frammentat|sotto pressione/.test(label)) return 'S3';
+  if(/scenario intermedio|intermedio|intermediate/.test(label)) return 'INT';
+
+  const inferred=inferScenarioFromParams(params);
+  if(inferred) return inferred;
+
+  const scoreObj=parseMaybeJSON(scores,{});
+  const scoreIds=['S1','S2','S3'].filter(id=>Number.isFinite(Number(scoreObj[id])));
+  if(scoreIds.length){
+    return scoreIds.sort((a,b)=>Number(scoreObj[b])-Number(scoreObj[a]))[0];
+  }
+  return 'INT';
+}
+
 function noteMatchesCurrentSetup(note){
   if(!note || note.approved === false) return false;
-  // Mostra la nota solo nello scenario a cui è stata associata al momento del salvataggio.
-  // Se il setup corrente è intermedio, vengono mostrate solo eventuali note salvate come INT.
-  const currentScenario = chooseScenario(calculateScores());
-  return (note.scenario || 'INT') === currentScenario;
+  // Il preset scelto è il contesto stabile delle note. Se non è stato scelto
+  // alcun preset, usa la classificazione corrente del set-up.
+  const currentScenario = activeScenarioContext || chooseScenario(calculateScores());
+  const noteScenario = normalizeScenarioId(note.scenario, note.scenarioTitle, note.params, note.scores);
+  return noteScenario === currentScenario;
 }
 function setSprite(role, opacity, blur=0, extraScale=1){
   qsa(`[data-role="${role}"]`).forEach((el,i)=>{
@@ -1243,6 +1289,7 @@ qs('#orientationRange').addEventListener('input', e=>{
   updateVisuals();
 });
 qs('#resetBtn').addEventListener('click',()=>{
+  activeScenarioContext=null;
   Object.assign(state,{posidonia:50,refugia:42,fishing:55,adaptiveFishing:45,aquaculture:50,ecotourism:45,traffic:50,governance:42,climate:45});
   Object.keys(state).forEach(k=>{const sl=qs(`.v-slider[data-id="${k}"]`); if(sl){sl.value=state[k]; qs(`#val-${k}`).textContent=state[k];}});
   qs('#timeline').value=0; tYear=0; year=2026; angle=0; qs('#orientationRange').value=0; qs('#mapInner').style.transform='rotate(0deg)'; qs('#degLabel').textContent='0°'; if(qs('#yearDisplay')) qs('#yearDisplay').textContent=year; updateVisuals();
@@ -1256,6 +1303,7 @@ const scenarioPresets = {
 function applyScenarioPreset(id){
   const preset=scenarioPresets[id];
   if(!preset) return;
+  activeScenarioContext=id;
   Object.assign(state,preset);
   Object.keys(state).forEach(k=>{
     const sl=qs(`.v-slider[data-id="${k}"]`);
@@ -1342,6 +1390,7 @@ qs('#sceneWrap').addEventListener('click',e=>{
 });
 function addHotspot(worldX,y,text,approved=true){
   const setup=getCurrentSetup();
+  const noteScenario=activeScenarioContext || setup.scenario;
   const note={
     note_id:'note_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
     created_at:new Date().toISOString(),
@@ -1349,8 +1398,8 @@ function addHotspot(worldX,y,text,approved=true){
     year,
     timelineValue:setup.timelineValue,
     angle,
-    scenario:setup.scenario,
-    scenarioTitle:setup.scenarioTitle,
+    scenario:noteScenario,
+    scenarioTitle:scenarios[noteScenario]?.title || setup.scenarioTitle,
     worldX:Math.round(worldX*10)/10,
     y:Math.round(y*10)/10,
     text,
@@ -1465,23 +1514,35 @@ async function fetchApprovedNotes(){
     }
 
     if(Array.isArray(data.notes)){
-      notes = data.notes.map(n=>({
-        note_id:n.note_id||n.id||'',
-        created_at:n.created_at||n.timestamp||'',
-        approved:true,
-        year:Number(n.year)||2026,
-        timelineValue:Number(n.timelineValue)||0,
-        angle:Number(n.angle)||0,
-        scenario:n.scenario||'INT',
-        scenarioTitle:n.scenarioTitle||'',
-        worldX:Number(n.worldX)||50,
-        y:Number(n.y)||50,
-        text:n.text||n.note_text||'',
-        toleranceYears:Number(n.toleranceYears)||3,
-        toleranceParamMeanAbs:Number(n.toleranceParamMeanAbs)||12,
-        params:n.params||{},
-        scores:n.scores||{}
-      }));
+      notes = data.notes.map(n=>{
+        // Retrocompatibilità: accetta sia camelCase sia snake_case e, se presente,
+        // anche un oggetto `note` annidato restituito dal backend.
+        const nested=(n && n.note && typeof n.note==='object') ? n.note : {};
+        const src={...nested,...n};
+        const params=parseMaybeJSON(src.params||nested.params||{},{});
+        const scores=parseMaybeJSON(src.scores||nested.scores||{},{});
+        const scenarioTitle=src.scenarioTitle||src.scenario_title||nested.scenarioTitle||nested.scenario_title||'';
+        const scenario=normalizeScenarioId(src.scenario||src.scenario_id||scenarioTitle, scenarioTitle, params, scores);
+        const xRaw=src.worldX ?? src.world_x ?? src.x_pct ?? nested.worldX ?? nested.world_x ?? 50;
+        const yRaw=src.y ?? src.worldY ?? src.world_y ?? src.y_pct ?? nested.y ?? 50;
+        return {
+          note_id:src.note_id||src.id||nested.note_id||nested.id||'',
+          created_at:src.created_at||src.timestamp||nested.created_at||nested.timestamp||'',
+          approved:src.approved !== false,
+          year:Number(src.year||nested.year)||2026,
+          timelineValue:Number(src.timelineValue ?? src.timeline_value ?? nested.timelineValue ?? nested.timeline_value)||0,
+          angle:Number(src.angle ?? src.coast_sea_value ?? nested.angle)||0,
+          scenario,
+          scenarioTitle:scenarioTitle || scenarios[scenario]?.title || '',
+          worldX:Number(xRaw),
+          y:Number(yRaw),
+          text:src.text||src.note_text||src.noteText||nested.text||nested.note_text||'',
+          toleranceYears:Number(src.toleranceYears ?? src.tolerance_years ?? nested.toleranceYears)||3,
+          toleranceParamMeanAbs:Number(src.toleranceParamMeanAbs ?? src.tolerance_param_mean_abs ?? nested.toleranceParamMeanAbs)||12,
+          params,
+          scores
+        };
+      });
       renderNotes();
     }
   }catch(err){ console.warn('Fetch note moderato non riuscito', err); }
