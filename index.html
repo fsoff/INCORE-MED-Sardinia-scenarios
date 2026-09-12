@@ -978,6 +978,50 @@ const scoreWeights = {
   climate:.70
 };
 
+
+// Profili VISIVI: traducono i tre scenari in presenze/assenze chiaramente leggibili nel panorama.
+// Non sostituiscono i parametri scientifici: servono a evitare che scenari concettualmente diversi
+// mostrino quasi lo stesso numero di elementi. I valori indicano densità visiva 0–100.
+const scenarioVisualTargets = {
+  S1:{
+    clouds:68, tourism:82, fishing:58, traffic:88, petroleum:18, cargo:78, sustainableCargo:88,
+    posidoniaHealthy:72, posidoniaStressed:22, fish:68, cetacean:58, wind:78, aquaculture:96
+  },
+  S2:{
+    clouds:52, tourism:58, fishing:24, traffic:28, petroleum:0, cargo:18, sustainableCargo:48,
+    posidoniaHealthy:100, posidoniaStressed:4, fish:96, cetacean:90, wind:28, aquaculture:46
+  },
+  S3:{
+    clouds:100, tourism:38, fishing:94, traffic:100, petroleum:100, cargo:92, sustainableCargo:0,
+    posidoniaHealthy:4, posidoniaStressed:100, fish:10, cetacean:3, wind:0, aquaculture:24
+  }
+};
+
+function scenarioVisualDensity(role, dynamicValue, scenario){
+  const target = scenarioVisualTargets[scenario]?.[role];
+  if(target == null) return clamp(dynamicValue);
+  // S3 è volutamente più netto: il degrado deve essere immediatamente leggibile.
+  const blend = scenario === 'S3' ? .90 : .82;
+  let value = lerp(dynamicValue, target, blend);
+
+  // Evoluzione temporale coerente con le narrazioni: nello scenario frammentato
+  // turismo, acquacoltura e fauna peggiorano ulteriormente verso il 2100.
+  if(scenario === 'S3'){
+    if(role === 'tourism') value -= tYear * 24;
+    if(role === 'aquaculture') value -= tYear * 12;
+    if(role === 'fish') value -= tYear * 8;
+    if(role === 'cetacean') value -= tYear * 5;
+  }
+  return clamp(value);
+}
+
+function scenarioVisualMin(role, scenario){
+  // Permette la vera scomparsa degli elementi che non appartengono allo scenario.
+  if(scenario === 'S3' && ['posidoniaHealthy','fish','cetacean','wind','sustainableCargo'].includes(role)) return 0;
+  if(scenario === 'S2' && role === 'petroleum') return 0;
+  return densityConfig[role]?.min || 0;
+}
+
 function similarityToTarget(target){
   let weightedDistance=0, weightSum=0;
   Object.keys(scoreWeights).forEach(k=>{
@@ -1025,10 +1069,11 @@ function setupDistance(note){
   return sum/keys.length;
 }
 function noteMatchesCurrentSetup(note){
-  // Le note sono persistenti: se arrivano dal backend del Google Sheet
-  // restano visibili a ogni accesso finché non vengono eliminate/non restituite dal foglio.
-  // Rimangono comunque ancorate alla posizione worldX/y del panorama, quindi scorrono con la scena.
-  return note && note.approved !== false;
+  if(!note || note.approved === false) return false;
+  // Mostra la nota solo nello scenario a cui è stata associata al momento del salvataggio.
+  // Se il setup corrente è intermedio, vengono mostrate solo eventuali note salvate come INT.
+  const currentScenario = chooseScenario(calculateScores());
+  return (note.scenario || 'INT') === currentScenario;
 }
 function setSprite(role, opacity, blur=0, extraScale=1){
   qsa(`[data-role="${role}"]`).forEach((el,i)=>{
@@ -1103,41 +1148,48 @@ function updateVisuals(){
   qs('#darkOverlay').style.opacity = (dark*.82).toFixed(2);
   qs('#noiseOverlay').style.opacity = (0.06 + dark*.18 + uncertainty/380).toFixed(2);
 
-  applyDensity('clouds', state.climate*.95 + scores.S3*.20 + 35, densityConfig.clouds.min);
+  // Densità dinamiche di base, poi rafforzate dal profilo visivo dello scenario attivo.
+  // Nota: l'eolico dipende soprattutto da governance/transizione, NON dallo stress climatico.
+  const vd = {
+    clouds: scenarioVisualDensity('clouds', state.climate*.92 + scores.S3*.22 + 28, scenario),
+    tourism: scenarioVisualDensity('tourism', state.ecotourism*.82 + 20 - state.climate*.08, scenario),
+    fishing: scenarioVisualDensity('fishing', state.fishing*.84 + 18 - state.adaptiveFishing*.06, scenario),
+    traffic: scenarioVisualDensity('traffic', state.traffic*.86 + state.ecotourism*.10 + scores.S3*.08 + 12, scenario),
+    petroleum: scenarioVisualDensity('petroleum', state.traffic*.72 + scores.S3*.24 + 12 - state.governance*.18, scenario),
+    cargo: scenarioVisualDensity('cargo', state.traffic*.80 + scores.S3*.12 - state.governance*.18, scenario),
+    sustainableCargo: scenarioVisualDensity('sustainableCargo', Math.min(state.traffic,state.governance)*.68 + state.adaptiveFishing*.18 - scores.S3*.28, scenario),
+    posidoniaHealthy: scenarioVisualDensity('posidoniaHealthy', state.posidonia*.96 + state.refugia*.26 - state.climate*.22, scenario),
+    posidoniaStressed: scenarioVisualDensity('posidoniaStressed', (100-state.posidonia)*.86 + state.climate*.36 + tYear*14, scenario),
+    fish: scenarioVisualDensity('fish', state.posidonia*.40 + state.refugia*.50 + state.governance*.16 - state.traffic*.16 - state.climate*.22 + 16, scenario),
+    cetacean: scenarioVisualDensity('cetacean', state.refugia*.72 + state.posidonia*.24 - state.traffic*.28 - state.climate*.16 + 20, scenario),
+    wind: scenarioVisualDensity('wind', state.governance*.58 + state.adaptiveFishing*.12 + (100-scores.S3)*.10 + tYear*6, scenario),
+    aquaculture: scenarioVisualDensity('aquaculture', state.aquaculture*.82 - state.climate*.10 + state.governance*.10, scenario)
+  };
+
+  applyDensity('clouds', vd.clouds, scenarioVisualMin('clouds',scenario));
   applyDensity('seaLevelChart', state.climate*.55 + tYear*45 + 45, densityConfig.seaLevelChart.min);
   applyDensity('acidChart', state.climate*.55 + tYear*45 + 28, densityConfig.acidChart.min);
 
-  applyDensity('tourism', state.ecotourism*.82 + 24 - state.climate*.07, densityConfig.tourism.min);
-  applyDensity('fishing', state.fishing*.82 + 22 - state.adaptiveFishing*.05, densityConfig.fishing.min);
-  applyDensity('traffic', state.traffic*.82 + state.ecotourism*.20 + scores.S3*.08 + 18, densityConfig.traffic.min);
-  applyDensity('petroleum', state.traffic*.72 + scores.S3*.22 + 18 - state.governance*.10, densityConfig.petroleum.min);
-  applyDensity('cargo', state.traffic*.75 + scores.S3*.15 - state.governance*.22, densityConfig.cargo.min);
-  applyDensity('sustainableCargo', Math.min(state.traffic, state.governance)*.62 + state.adaptiveFishing*.22 - scores.S3*.20, densityConfig.sustainableCargo.min);
-
-  applyDensity('posidoniaHealthy', state.posidonia*.95 + state.refugia*.25 - state.climate*.18, densityConfig.posidoniaHealthy.min);
-  applyDensity('posidoniaStressed', (100-state.posidonia)*.82 + state.climate*.34 + tYear*12, densityConfig.posidoniaStressed.min);
-  applyDensity('fish', state.posidonia*.38 + state.refugia*.48 + state.governance*.15 - state.traffic*.14 - state.climate*.20 + 18, densityConfig.fish.min);
-  applyDensity('cetacean', state.refugia*.70 + state.posidonia*.22 - state.traffic*.24 - state.climate*.14 + 24, densityConfig.cetacean.min);
-  applyDensity('wind', state.governance*.38 + state.climate*.26 + state.traffic*.06 + tYear*18, densityConfig.wind.min);
-  applyDensity('aquaculture', state.aquaculture*.78 - state.climate*.08 + state.governance*.10, densityConfig.aquaculture.min);
+  ['tourism','fishing','traffic','petroleum','cargo','sustainableCargo','posidoniaHealthy','posidoniaStressed','fish','cetacean','wind','aquaculture']
+    .forEach(role=>applyDensity(role, vd[role], scenarioVisualMin(role,scenario)));
   updateClimateWidgets();
 
-  setSprite('clouds', state.climate*.9 + scores.S3*.25 + tYear*12, 0.8 + dark*1.5, .98 + state.climate/360);
+  setSprite('clouds', vd.clouds, 0.8 + dark*1.5, .98 + state.climate/360);
   setSprite('seaLevelChart', state.climate*.55 + tYear*45 + 45, 0, 1.0);
   setSprite('acidChart', state.climate*.55 + tYear*45 + 28, 0, 1.0);
 
-  setSprite('posidoniaHealthy', state.posidonia*.95 - state.climate*.18 + state.refugia*.12, uncertainty/45, .92 + state.posidonia/280);
-  setSprite('posidoniaStressed', (100-state.posidonia)*.72 + state.climate*.45 + tYear*14, 0.7 + uncertainty/30, .90 + (100-state.posidonia)/285);
-  setSprite('fish', (state.posidonia*.45 + state.refugia*.5 + state.governance*.18 - state.traffic*.25 - state.climate*.25), uncertainty/62, .86 + state.refugia/300);
-  setSprite('cetacean', (state.refugia*.75 + state.posidonia*.35 - state.traffic*.42 - state.climate*.25), uncertainty/58, .90 + state.refugia/300);
-  setSprite('fishing', state.fishing*.85 + (100-state.adaptiveFishing)*.14, uncertainty/48, .88 + state.fishing/310);
-  setSprite('tourism', state.ecotourism*.85 - state.climate*.12, uncertainty/62, .88 + state.ecotourism/315);
-  setSprite('traffic', state.traffic*.88 + scores.S3*.10, 0.4 + uncertainty/42, .88 + state.traffic/320);
-  setSprite('petroleum', state.traffic*.85 + scores.S3*.12, 0.6 + uncertainty/34, .88 + state.traffic/310);
-  setSprite('cargo', state.traffic*.72 + scores.S3*.12, 0.4 + uncertainty/38, .86 + state.traffic/320);
-  setSprite('sustainableCargo', Math.min(state.traffic, state.governance)*.55 + state.adaptiveFishing*.15 - scores.S3*.25, uncertainty/58, .90 + state.governance/340);
-  setSprite('wind', state.governance*.38 + state.climate*.25 + tYear*16, uncertainty/70, .92 + state.governance/360);
-  setSprite('aquaculture', state.aquaculture*.85 - state.climate*.15, uncertainty/55, .88 + state.aquaculture/310);
+  setSprite('posidoniaHealthy', vd.posidoniaHealthy, uncertainty/45, .92 + state.posidonia/280);
+  setSprite('posidoniaStressed', vd.posidoniaStressed, 0.7 + uncertainty/30, .90 + (100-state.posidonia)/285);
+  setSprite('fish', vd.fish, uncertainty/62, .86 + state.refugia/300);
+  setSprite('cetacean', vd.cetacean, uncertainty/58, .90 + state.refugia/300);
+  setSprite('fishing', vd.fishing, uncertainty/48, .88 + state.fishing/310);
+  setSprite('tourism', vd.tourism, uncertainty/62, .88 + state.ecotourism/315);
+  setSprite('traffic', vd.traffic, 0.4 + uncertainty/42, .88 + state.traffic/320);
+  setSprite('petroleum', vd.petroleum, 0.6 + uncertainty/34, .88 + state.traffic/310);
+  setSprite('cargo', vd.cargo, 0.4 + uncertainty/38, .86 + state.traffic/320);
+  setSprite('sustainableCargo', vd.sustainableCargo, uncertainty/58, .90 + state.governance/340);
+  setSprite('wind', vd.wind, uncertainty/70, .92 + state.governance/360);
+  setSprite('aquaculture', vd.aquaculture, uncertainty/55, .88 + state.aquaculture/310);
 
   ['S1','S2','S3'].forEach(s=>{
     qs(`#score${s}`).style.width = `${scores[s]}%`;
